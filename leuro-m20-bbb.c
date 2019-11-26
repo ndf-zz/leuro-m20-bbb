@@ -30,8 +30,8 @@
 #define SRVP (PL/2)		// Vertical pixels per nibble column
 #define CARDOFT (FBW*Q*PL)	// Offset in 32bit words from icard to icard
 #define REGOFT (SRVP*FBW)	// Offset in 32bit words between LED registers
-#define DROPUID 1000
-#define DROPGID 1000
+#define DROPUID 999
+#define DROPGID 998		// Set to a non-root system account
 
 /* GPIO addresses and control lines */
 #define GPIOLEN 4096
@@ -45,6 +45,8 @@
 #define PIN_D5 13		// gpio0:13	P9.19
 #define PIN_D4 4		// gpio0:18	P9.18
 #define PIN_D3 5		// gpio0:5	P9.17
+#define PIN_D2 31		// gpio0:31	P9.13 (not used)
+#define PIN_D1 11		// gpio0:11	P9.11 (not used)
 #define PIN_T 15		// gpio0:15	P9.24
 #define PIN_E0 14		// gpio0:14	P9.26
 #define PIN_E1 28		// gpio1:28	P9.12
