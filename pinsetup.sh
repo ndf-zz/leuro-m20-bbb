@@ -10,7 +10,11 @@ config-pin P9.14 pwm
 
 # prepare dimmer and set to 'off' low brightness
 pwmchip=`ls /sys/devices/platform/ocp/48302000.epwmss/48302200.pwm/pwm/`
-pwm=/sys/class/pwm/${pwmchip}/pwm-*:0
+pwm=`echo -en /sys/class/pwm/${pwmchip}/pwm-?:0`
+if [ ! -e "${pwm}" ] ; then
+  echo 0 > /sys/class/pwm/${pwmchip}/export
+  pwm=`echo -en /sys/class/pwm/${pwmchip}/pwm-?:0`
+fi
 echo 50000 > ${pwm}/period
 echo 49900 > ${pwm}/duty_cycle
 echo 1 > ${pwm}/enable
