@@ -15,7 +15,7 @@ using mmap-ed pages from /dev/mem.
 
 ## Building
 
-Edit the socket, screen configuration, and UID/GID defines,
+Edit the socket, screen configuration, and UID/GID defines
 then compile leuro-m20-bbb using make:
 
 	$ make
@@ -32,11 +32,14 @@ pins. Then, as root, run leuro-m20-bbb:
 
 ## Hardware Setup
 
-Make the following connections from the Beaglebone Black
+Connect from the Beaglebone Black
 P9 expansion header through a ~500 Ohm resistor[1] to the 
 non-inverting inputs[2] on the "LED-ADAPTER-KARTE" or directly
-to the "LED-OPTO-KARTE". If the display has a "LEDDIMMER" board,
-remove it and the connecting ribbon completely.
+to the "LED-OPTO-KARTE". Inverting inputs can be tied together
+and connected to a ground pin (eg P9.1, P9.2) or run separately
+back to a ground point on the Beaglebone Black. If the display
+has a "LEDDIMMER" board, remove it and the connecting ribbon
+completely.
 
 Display Line | Function | BBB Pin | GPIO | Note
 --- | --- | --- | --- | ---
@@ -67,14 +70,14 @@ D8/D8N | Row 1a | P9.22 | 0:2 | row 1 select on icard latch
      an additional ~500 Ohm series resistor is required on each input.
 
    - [2] Balanced inputs are labeled X/XN where X is the inverting input,
-     and XN is the non-inverting input for line X. X connects to the A2231
+     and XN is the non-inverting input. X connects to the A2231
      cathode, XN connects to the anode. For more information on the
      A2231, see the
      [manufacturer website](https://www.broadcom.com/products/optocouplers/industrial-plastic/digital-optocouplers/5mbd/hcpl-2231).
 
 ## Display Mapping
 
-FIGURE 1
+![Display Arrangement](display_mapping.svg "Display Mapping")
 
 Leurocomm displays (viewed from the front-side) are arranged in rows
 of LED panels labeled "LED - M20CC" (12x12 pixels in this case),
