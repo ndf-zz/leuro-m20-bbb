@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# configure all lcd pins for driving the display
+# configure all pins for driving the display
 for pin in 11 12 13 15 16 17 18 19 20 21 22 24 26 ; do
     config-pin P9.${pin} out
 done

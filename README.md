@@ -9,7 +9,7 @@ leuro-m20-bbb reads framebuffer updates (see related project
 [caprica](https://github.com/ndf-zz/caprica)
 ) sent over a Unix domain socket, then writes the framebuffer
 to an attached Leurocomm M20 monochrome LED display by bit-banging
-GPIO pins on a Beaglebone Black. In order to achieve acceptible
+GPIO pins on a Beaglebone Black. In order to achieve acceptable
 refresh times, GPIO set and clear registers are written directly
 using mmap-ed pages from /dev/mem.
 
@@ -19,7 +19,7 @@ Edit the socket, screen configuration, and UID/GID defines,
 then compile leuro-m20-bbb using make:
 
 	$ make
-	cc -pedantic -Wall -Werror -O9 leuro-m20-bbb.c -o leuro-m20-bbb
+	cc -Wall -Werror -O3 leuro-m20-bbb.c -o leuro-m20-bbb
 
 ## Running
 
@@ -78,13 +78,13 @@ FIGURE 1
 
 Leurocomm displays (viewed from the front-side) are arranged in rows
 of LED panels labeled "LED - M20CC" (12x12 pixels in this case),
-daisy chained right to left. Each LED panel has two shift registers
+daisy-chained right to left. Each LED panel has two shift registers
 "a" and "b", arranged in 6 rows of 3 columns, each 4 bits wide.
 Groups of 3 or 4 LED panel rows are driven from interface cards
 labeled "4fach-Verteiler PCI IO -VM2003".
-Interface cards are on the right side of the display, connected from
-bottom to top. Each collection of rows, numbered 1-4 on the interface card,
-is connected top to bottom.
+Interface cards are on the right side of the display, connected in a
+daisy-chain from bottom to top. Each collection of rows, numbered 1-4
+on the interface card, is connected top to bottom.
 Framebuffer updates from caprica describe the desired image as a buffer
 of 32 bit pixel values packed little-endian[3] from left to right,
 top to bottom.
