@@ -1,5 +1,5 @@
 /*
- * Write cairo FORMAT_A1 framebuffer to Leurocomm M20
+ * Write cairo FORMAT_A1 framebuffer to Leurocom M20
  * via Beaglebone Black mmap'ed GPIO with a cavalier approach
  *
  * Note: GPIO pins should be configured separately, see: pinsetup.sh
