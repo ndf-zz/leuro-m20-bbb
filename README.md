@@ -77,7 +77,7 @@ D8/D8N | Row 1a | P9.22 | 0:2 | row 1 select on icard latch
 
 ## Display Mapping
 
-![Display Arrangement](display_mapping.svg "Display Mapping")
+![Display Arrangement](images/display_mapping.svg "Display Mapping")
 
 Leurocom displays (viewed from the front-side) are arranged in rows
 of LED panels labeled "LED - M20CC" (12x12 pixels in this case),
@@ -210,7 +210,7 @@ In/Out Header - 26 pins
 
 Function | Pin | Pin | Function
 --- | --- | --- | ---
- GND | 1 | 2 | Top Data (D2, D4, D6, S8)
+ GND | 1 | 2 | Top Data (D2, D4, D6, D8)
  GND | 3 | 4 | Bottom Data (D1, D3, D5, D7)
  GND | 5 | 6 | Clock (T)
  GND | 7 | 8 | S (Latch pixels)
