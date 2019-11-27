@@ -15,6 +15,8 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <grp.h>
+#include <syslog.h>
 
 #define FB_ADDR "caprica:0"	// Unix domain socket string
 #define HPANELS 12		// Number of LED panel columns in display
@@ -32,6 +34,7 @@
 #define REGOFT (SRVP*FBW)	// Offset in 32bit words between LED registers
 #define DROPUID 999
 #define DROPGID 998		// Set to a non-root system account
+#define MAXFRAMEDROP 10		// force re-draw after dropping frames
 
 /* GPIO addresses and control lines */
 #define GPIOLEN 4096
@@ -209,6 +212,15 @@ redraw (uint32_t * buf)
       c++;
       card_next ();
     }
+  strobe_s ();
+}
+
+/* Print simple error and exit */
+void
+perror_exit(char *message)
+{
+  perror(message);
+  exit (EXIT_FAILURE);
 }
 
 int
@@ -217,84 +229,49 @@ main (int argc, char **argv)
   uint32_t *fb = NULL;
   size_t fblen = 0;
   int s = -1;
-  int m = -1;
   struct pollfd pfd;
   int res = 0;
   struct sockaddr_un name;
   uint32_t* gpio0 = NULL;
   uint32_t* gpio1 = NULL;
 
-  /* report compiled display geometry */
-  printf ("Display: %dx%d px, %dx%d panels on %d icards, %d rows/card\n",
-	  DW, DH, HPANELS, VPANELS, Z, Q);
-
-  /* map GPIO memory and assign registers */
-  m = open("/dev/mem", O_RDWR | O_SYNC);
-  if (m == -1)
-    {
-      perror ("Error accessing /dev/mem");
-      exit (EXIT_FAILURE);
-    }
+  /* map GPIO memory pages and assign registers */
+  s = open("/dev/mem", O_RDWR | O_SYNC);
+  if (s == -1) perror_exit("Error accessing /dev/mem");
   gpio0 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ|PROT_WRITE,
-                             MAP_SHARED, m, GPIO0_ADDR);
-  if (gpio0 == MAP_FAILED)
-    {
-      perror ("Error mapping gpio0");
-      exit (EXIT_FAILURE);
-    }
+                             MAP_SHARED, s, GPIO0_ADDR);
+  if (gpio0 == MAP_FAILED) perror_exit("Error mapping gpio0");
+  gpio1 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ|PROT_WRITE,
+                             MAP_SHARED, s, GPIO1_ADDR);
+  if (gpio1 == MAP_FAILED) perror_exit("Error mapping gpio1");
+  if (close (s) == -1) perror_exit("Error closing /dev/mem");
+
+  /* drop all privs */
+  if (setgroups(0, NULL) == -1)
+    perror_exit("Error dropping supplementary groups");
+  if (setgid(DROPGID) != 0)
+    perror_exit("Unable to drop group privileges");
+  if (setuid(DROPUID) != 0)
+    perror_exit("Unable to drop user privileges");
+
+  /* save pointers to the interesting registers */
   gpio0_set = &gpio0[GPIO_SET];
   gpio0_clr = &gpio0[GPIO_CLR];
-  gpio1 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ|PROT_WRITE,
-                             MAP_SHARED, m, GPIO1_ADDR);
-  if (gpio1 == MAP_FAILED)
-    {
-      perror ("Error mapping gpio1");
-      exit (EXIT_FAILURE);
-    }
   gpio1_set = &gpio1[GPIO_SET];
   gpio1_clr = &gpio1[GPIO_CLR];
-
-  if (getuid() == 0) {
-    /* process is running as root, drop privileges */
-    if (setgid(DROPGID) != 0) {
-        perror("Unable to drop group privileges");
-        exit (EXIT_FAILURE);
-    }
-    if (setuid(DROPUID) != 0) {
-        perror("Unable to drop user privileges");
-        exit (EXIT_FAILURE);
-    }
-    printf("Dropped from root to %d\n", DROPUID);
-  }
 
   /* request memory for framebuffer and initialise */
   fblen = FBW * DH * sizeof (uint32_t);
   fb = calloc (FBW * DH, sizeof (uint32_t));
-  if (fb == NULL)
-    {
-      perror ("Error allocating framebuffer");
-      exit (EXIT_FAILURE);
-    }
+  if (fb == NULL) perror_exit("Error allocating framebuffer");
 
-  /* Create socket and set non-blocking */
+  /* Create unix datagram socket and set non-blocking */
   s = socket (AF_UNIX, SOCK_DGRAM, 0);
-  if (s == -1)
-    {
-      perror ("Error creating socket");
-      exit (EXIT_FAILURE);
-    }
+  if (s == -1) perror_exit("Error creating unix socket");
   res = fcntl (s, F_GETFL);
-  if (res == -1)
-    {
-      perror ("Error reading socket flags");
-      exit (EXIT_FAILURE);
-    }
+  if (res == -1) perror_exit("Error reading socket flags");
   res = fcntl (s, F_SETFL, res | O_NONBLOCK);
-  if (res == -1)
-    {
-      perror ("Error setting socket non-blocking");
-      exit (EXIT_FAILURE);
-    }
+  if (res == -1) perror ("Error setting socket non-blocking");
 
   /* Clear the address and copy in socket name
      leaving a null in the first byte */
@@ -302,19 +279,35 @@ main (int argc, char **argv)
   name.sun_family = AF_UNIX;
   strncpy (name.sun_path + 1, FB_ADDR, sizeof (name.sun_path) - 2);
 
-  /* bind address to socket
-     note: trailing null is chopped intentionally  */
+  /* bind address to socket */
   res = bind (s, (const struct sockaddr *) &name,
 	      sizeof (name.sun_family) + sizeof (FB_ADDR));
-  if (res == -1)
-    {
-      perror ("Error binding socket address");
-      exit (EXIT_FAILURE);
-    }
-  printf("Listening on @%s\n", FB_ADDR);
+  if (res == -1) perror_exit("Error binding socket address");
 
-  /* prepare display interface card */
+  /* detach process and close all open fds */
+  res = daemon(0, 1);
+  if (res == -1) perror_exit("Error backgrounding process");
+  int maxfd = sysconf (_SC_OPEN_MAX);
+  if (maxfd == -1) perror_exit("Error reading _SC_OPEN_MAX");
+  int fd = 0;
+  while (fd < maxfd)
+    {
+      if (fd != s)
+        if (close (fd) == -1)
+          syslog(LOG_USER|LOG_ERR, "Error closing file descriptor %d", fd);
+      fd++;
+    }
+
+  /* report startup to syslog */
+  syslog(LOG_USER|LOG_INFO,
+         "Display: %dx%d px, %dx%d panels on %d icards, %d rows/card\n",
+	  DW, DH, HPANELS, VPANELS, Z, Q);
+  syslog(LOG_USER|LOG_INFO,
+         "Listening on @%s\n", FB_ADDR);
+
+  /* prepare display interface card, and clear display */
   card_relax ();
+  redraw (&fb[0]);
 
   /* wait for updates on socket */
   pfd.fd = s;
@@ -324,7 +317,7 @@ main (int argc, char **argv)
       res = poll (&pfd, 1, -1);
       if (res == -1)
 	{
-	  perror ("Error waiting on socket");
+	  syslog (LOG_USER|LOG_ERR, "Fatal error waiting on socket: %m");
 	  exit (EXIT_FAILURE);
 	}
       if (pfd.revents & POLLIN)
@@ -333,12 +326,12 @@ main (int argc, char **argv)
 	  while (recvfrom (s, fb, fblen, 0, NULL, NULL) > 0)
 	    {
 	      res++;
+              if (res > MAXFRAMEDROP) break; // Avoid DoS
 	    }
 	  if (res > 0)
 	    {
-              /* discard and queued frames and only draw the last one */
+              /* redraw frame buffer */
 	      redraw (&fb[0]);
-              strobe_s ();
 	    }
 	}
     }
