@@ -18,7 +18,7 @@
 #include <grp.h>
 #include <syslog.h>
 
-#define FB_ADDR "caprica:0"	// Unix domain socket string
+#define FB_ADDR "caprica-144x72"// Unix domain socket string
 #define HPANELS 12		// Number of LED panel columns in display
 #define VPANELS 6		// Number of LED panel rows in display
 #define PL 12			// LED panel height/width
