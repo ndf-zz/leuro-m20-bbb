@@ -91,7 +91,7 @@ D8/D8N | Row 1a | P9.22 | 0:2 | row 1 select on icard latch
 
 ![Display Arrangement](images/display_mapping.svg "Display Mapping")
 
-Leurocom displays (viewed from the front-side) are arranged in rows
+The Leurocom M20 (viewed from the front-side) is arranged in rows
 of LED panels labeled "LED - M20CC" (12x12 pixels in this case),
 daisy-chained right to left. Each LED panel has two shift registers
 "a" and "b", arranged in 6 rows of 3 columns, each 4 bits wide.
