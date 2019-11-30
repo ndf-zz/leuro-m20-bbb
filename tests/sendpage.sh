@@ -2,10 +2,10 @@
 #
 # transfer a framebuffer to the named unix socket using socat
 #
-SOCKET='caprica-144x72'
+SOCKET='/run/caprica/display'
 SOURCE="${1}"
 if [ -e "${SOURCE}" ] ; then
-  socat -u "OPEN:${SOURCE},rdonly" ABSTRACT-SENDTO:${SOCKET}
+  socat -u "OPEN:${SOURCE},rdonly" UNIX-SENDTO:${SOCKET}
 else
   echo usage: ${0} filename
 fi

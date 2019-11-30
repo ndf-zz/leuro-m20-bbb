@@ -9,16 +9,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <sys/mman.h>
-#include <grp.h>
 #include <syslog.h>
 
-#define FB_ADDR "caprica-144x72"// Unix domain socket string
+#define FB_ADDR "/run/caprica/display"	// Unix domain socket string
 #define HPANELS 12		// Number of LED panel columns in display
 #define VPANELS 6		// Number of LED panel rows in display
 #define PL 12			// LED panel height/width
@@ -32,8 +34,7 @@
 #define SRVP (PL/2)		// Vertical pixels per nibble column
 #define CARDOFT (FBW*Q*PL)	// Offset in 32bit words from icard to icard
 #define REGOFT (SRVP*FBW)	// Offset in 32bit words between LED registers
-#define DROPUID 999
-#define DROPGID 998		// Set to a non-root system account
+#define DROPUSER "caprica"	// Username of unprivileged user for daemon
 #define MAXFRAMEDROP 10		// force re-draw after dropping frames
 
 /* GPIO addresses and control lines */
@@ -63,13 +64,6 @@ static volatile uint32_t *gpio1_set = NULL;
 static volatile uint32_t *gpio1_clr = NULL;
 
 /* Display addressing helper functions */
-
-void
-card_relax (void)
-{
-  /* Clear E1 and E2 */
-  (*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
-}
 
 void
 card_first (void)
@@ -232,37 +226,38 @@ perror_exit (char *message)
 int
 main (int argc, char **argv)
 {
-  uint32_t *fb = NULL;
-  size_t fblen = 0;
-  int s = -1;
-  struct pollfd pfd;
   int res = 0;
-  struct sockaddr_un name;
-  uint32_t *gpio0 = NULL;
-  uint32_t *gpio1 = NULL;
 
   /* map GPIO memory pages and assign registers */
-  s = open ("/dev/mem", O_RDWR | O_SYNC);
+  int s = open ("/dev/mem", O_RDWR | O_SYNC);
   if (s == -1)
     perror_exit ("Error accessing /dev/mem");
-  gpio0 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
-			     MAP_SHARED, s, GPIO0_ADDR);
+  uint32_t *gpio0 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
+				       MAP_SHARED, s, GPIO0_ADDR);
   if (gpio0 == MAP_FAILED)
     perror_exit ("Error mapping gpio0");
-  gpio1 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
-			     MAP_SHARED, s, GPIO1_ADDR);
+  uint32_t *gpio1 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
+				       MAP_SHARED, s, GPIO1_ADDR);
   if (gpio1 == MAP_FAILED)
     perror_exit ("Error mapping gpio1");
   if (close (s) == -1)
     perror_exit ("Error closing /dev/mem");
 
+  /* fetch uid and gid of unprivileged user */
+  struct passwd *pwd = getpwnam (DROPUSER);
+  if (pwd == NULL)
+    perror_exit ("Error fetching user and group ids");
+
   /* drop all privs */
   if (setgroups (0, NULL) == -1)
     perror_exit ("Error dropping supplementary groups");
-  if (setgid (DROPGID) != 0)
+  if (setgid (pwd->pw_gid) != 0)
     perror_exit ("Unable to drop group privileges");
-  if (setuid (DROPUID) != 0)
+  if (setuid (pwd->pw_uid) != 0)
     perror_exit ("Unable to drop user privileges");
+
+  /* set umask */
+  umask (0007);
 
   /* save pointers to the interesting registers */
   gpio0_set = &gpio0[GPIO_SET];
@@ -271,8 +266,8 @@ main (int argc, char **argv)
   gpio1_clr = &gpio1[GPIO_CLR];
 
   /* request memory for framebuffer and initialise */
-  fblen = FBW * DH * sizeof (uint32_t);
-  fb = calloc (FBW * DH, sizeof (uint32_t));
+  size_t fblen = FBW * DH * sizeof (uint32_t);
+  uint32_t *fb = calloc (FBW * DH, sizeof (uint32_t));
   if (fb == NULL)
     perror_exit ("Error allocating framebuffer");
 
@@ -287,15 +282,18 @@ main (int argc, char **argv)
   if (res == -1)
     perror ("Error setting socket non-blocking");
 
-  /* Clear the address and copy in socket name
-     leaving a null in the first byte - Linux specific */
+  /* Clear the address and copy in socket pathname */
+  struct sockaddr_un name;
   memset (&name, 0, sizeof (struct sockaddr_un));
   name.sun_family = AF_UNIX;
-  strncpy (name.sun_path + 1, FB_ADDR, sizeof (name.sun_path) - 2);
+  strncpy (name.sun_path, FB_ADDR, sizeof (name.sun_path) - 1);
 
-  /* bind address to socket */
-  res = bind (s, (const struct sockaddr *) &name,
-	      sizeof (name.sun_family) + sizeof (FB_ADDR));
+  /* unlink pathname, ignoring errors - the error is deferred to bind */
+  unlink (FB_ADDR);
+
+  /* bind address to socket - with race condition on path create */
+  res =
+    bind (s, (const struct sockaddr *) &name, sizeof (struct sockaddr_un));
   if (res == -1)
     perror_exit ("Error binding socket address");
 
@@ -318,13 +316,14 @@ main (int argc, char **argv)
   syslog (LOG_USER | LOG_INFO,
 	  "Display: %dx%d px, %dx%d panels on %d icards, %d rows/card\n",
 	  DW, DH, HPANELS, VPANELS, Z, Q);
-  syslog (LOG_USER | LOG_INFO, "Listening on @%s\n", FB_ADDR);
+  syslog (LOG_USER | LOG_INFO, "Listening on UNIX:%s\n", FB_ADDR);
 
   /* prepare display interface card, and clear display */
-  card_relax ();
+  (*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
   redraw (&fb[0]);
 
   /* wait for updates on socket */
+  struct pollfd pfd;
   pfd.fd = s;
   pfd.events = POLLIN;
   for (;;)
@@ -342,7 +341,11 @@ main (int argc, char **argv)
 	    {
 	      res++;
 	      if (res > MAXFRAMEDROP)
-		break;		// Avoid DoS
+                {
+	          syslog (LOG_USER | LOG_NOTICE,
+                             "Dropped %d frames before update", res);
+		  break;
+                }
 	    }
 	  if (res > 0)
 	    {

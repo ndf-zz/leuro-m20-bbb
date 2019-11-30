@@ -13,22 +13,34 @@ GPIO pins on a Beaglebone Black. In order to achieve acceptable
 refresh times, GPIO set and clear registers are written directly
 using mmap-ed pages from /dev/mem.
 
-## Building
+## Build
 
-Edit the socket, screen configuration, and UID/GID defines
+Edit the socket, screen configuration, and user defines
 then compile leuro-m20-bbb using make:
 
 	$ make
-	cc -Wall -Werror -O3 leuro-m20-bbb.c -o leuro-m20-bbb
 
-## Running
+## Install
 
-First run the provided script pinsetup.h (or an equivalent process)
-to configure GPIO and PWM settings on the relevant Beaglebone Black
-pins. Then, as root, run leuro-m20-bbb:
+Add a non-system account for the caprica user, then install to
+the path:
 
-	$ ./pinsetup.sh
-	$ sudo ./leuro-m20-bbb
+	# useradd -r -s /usr/sbin/nologin caprica
+	# install -s -o root -g root -m 0700 leuro-m20-bbb /usr/bin
+
+## Run
+
+Call the provided script pinsetup.h (or an equivalent process)
+to configure GPIO and PWM settings on the Beaglebone Black pins.
+Then, as root, create a socket directory and run leuro-m20-bbb:
+
+	# ./pinsetup.sh
+	# mkdir -m 0770 /run/caprica
+	# chown caprica:caprica /run/caprica
+	# leuro-m20-bbb
+
+leuro-m20-bbb will drop to the specified unprivileged user, detach from
+the terminal and run as a daemon process.
 
 ## Hardware Setup
 
