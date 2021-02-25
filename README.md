@@ -27,8 +27,8 @@ the path:
 
 	# useradd -r -s /usr/sbin/nologin caprica
 	# install -s -o root -g root -m 0700 leuro-m20-bbb /usr/bin
-	# install -s -o root -g root -m 0700 leuro-m20-bbb.hwinit /usr/bin
-	# install -s -o root -g root -m 0600 leuro-m20-bbb.service /etc/systemd/system
+	# install -o root -g root -m 0700 leuro-m20-bbb.hwinit /usr/bin
+	# install -o root -g root -m 0600 leuro-m20-bbb.service /etc/systemd/system
 	# systemctl enable leuro-m20-bbb.service
 
 ## Hardware Setup

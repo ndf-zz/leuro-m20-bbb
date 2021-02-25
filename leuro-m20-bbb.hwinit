@@ -47,7 +47,7 @@ case "$1" in
 	echo 50000 > ${PWM}/period
 	echo 49990 > ${PWM}/duty_cycle
 	echo 1 > ${PWM}/enable
-	config-pin P9.14 pwm
+	config-pin P9.14 pwm >/dev/null
 	gpio_start
 	rm -fr $SOCKPATH
 	mkdir -m 0770 $SOCKPATH

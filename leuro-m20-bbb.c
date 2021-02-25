@@ -69,16 +69,16 @@ static volatile uint32_t *gpio1_clr = NULL;
 void card_first(void)
 {
 	/* Toggle E2 on/off */
-	(*gpio1_set) = (1 << PIN_E2);
+	(*gpio1_set) = (1 << PIN_E2) | (1 << ACT);
 	(*gpio1_clr) = (1 << PIN_E2);
 }
 
 void card_next(void)
 {
 	/* Set E1 then toggle E2 on/off */
-	(*gpio1_set) = (1 << PIN_E1) | (1 << ACT);
+	(*gpio1_set) = (1 << PIN_E1);
 	(*gpio1_set) = (1 << PIN_E2);
-	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2) | (1 << ACT);
+	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
 }
 
 void strobe_t(void)
@@ -121,7 +121,7 @@ void row_next(void)
 void strobe_s(void)
 {
 	/* Toggle S on/off - latch LED registers across whole display */
-	(*gpio1_set) = (1 << PIN_S) | (1 << ACT);
+	(*gpio1_set) = (1 << PIN_S);
 	(*gpio1_clr) = (1 << PIN_S) | (1 << ACT);
 }
 
