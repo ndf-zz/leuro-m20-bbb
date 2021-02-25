@@ -45,7 +45,7 @@ case "$1" in
 	echo none > /sys/class/leds/beaglebone\:green\:usr0/trigger
 	find_pwm
 	echo 50000 > ${PWM}/period
-	echo 49990 > ${PWM}/duty_cycle
+	echo 49999 > ${PWM}/duty_cycle
 	echo 1 > ${PWM}/enable
 	config-pin P9.14 pwm >/dev/null
 	gpio_start
@@ -54,10 +54,10 @@ case "$1" in
 	chown caprica:caprica $SOCKPATH
 	;;
     stop)
-	rm -fr /run/caprica
-	pkill leuro-m20-bbb
+	rm -fr $SOCKPATH
 	find_pwm
-	echo 0 > ${pwm}/enable
+	pkill -x leuro-m20-bbb
+	echo 0 > ${PWM}/enable
 	echo timer > /sys/class/leds/beaglebone\:green\:usr0/trigger
 	;;
     *)
