@@ -56,6 +56,7 @@
 #define PIN_E1 28		// gpio1:28     P9.12
 #define PIN_E2 16		// gpio1:16     P9.15
 #define PIN_S 19		// gpio1.19     P9.16
+#define ACT 21			// gpio1.21     n/a
 #define DMASK ((1<<PIN_D8)|(1<<PIN_D7)|(1<<PIN_D6)|(1<<PIN_D5)|(1<<PIN_D4)|(1<<PIN_D3)|(1<<PIN_D2)|(1<<PIN_D1))
 
 static volatile uint32_t *gpio0_set = NULL;
@@ -75,9 +76,9 @@ void card_first(void)
 void card_next(void)
 {
 	/* Set E1 then toggle E2 on/off */
-	(*gpio1_set) = (1 << PIN_E1);
+	(*gpio1_set) = (1 << PIN_E1) | (1 << ACT);
 	(*gpio1_set) = (1 << PIN_E2);
-	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
+	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2) | (1 << ACT);
 }
 
 void strobe_t(void)
@@ -120,8 +121,8 @@ void row_next(void)
 void strobe_s(void)
 {
 	/* Toggle S on/off - latch LED registers across whole display */
-	(*gpio1_set) = (1 << PIN_S);
-	(*gpio1_clr) = (1 << PIN_S);
+	(*gpio1_set) = (1 << PIN_S) | (1 << ACT);
+	(*gpio1_clr) = (1 << PIN_S) | (1 << ACT);
 }
 
 /* Transfer bitmap pixels into LED panel shift registers */

@@ -27,20 +27,9 @@ the path:
 
 	# useradd -r -s /usr/sbin/nologin caprica
 	# install -s -o root -g root -m 0700 leuro-m20-bbb /usr/bin
-
-## Run
-
-Call the provided script pinsetup.h (or an equivalent process)
-to configure GPIO and PWM settings on the Beaglebone Black pins.
-Then, as root, create a socket directory and run leuro-m20-bbb:
-
-	# ./pinsetup.sh
-	# mkdir -m 0770 /run/caprica
-	# chown caprica:caprica /run/caprica
-	# leuro-m20-bbb
-
-leuro-m20-bbb will drop to the specified unprivileged user, detach from
-the terminal and run as a daemon process.
+	# install -s -o root -g root -m 0700 leuro-m20-bbb.hwinit /usr/bin
+	# install -s -o root -g root -m 0600 leuro-m20-bbb.service /etc/systemd/system
+	# systemctl enable leuro-m20-bbb.service
 
 ## Hardware Setup
 
@@ -74,6 +63,7 @@ D5/D5N | Row 2b | P9.19 | 0:13 | row 4 select on icard latch
 D6/D6N | Row 2a | P9.20 | 0:12 | row 3 select on icard latch
 D7/D7N | Row 1b | P9.21 | 0:3 | row 2 select on icard latch
 D8/D8N | Row 1a | P9.22 | 0:2 | row 1 select on icard latch
+n/a | ACT | n/a | 1:21 | BBB User led0
 
    - [1] On the "LED-OPTO-KARTE" board, A2231 optocouplers
      decode balanced lines from a Leurocom PCI card through a

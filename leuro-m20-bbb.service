@@ -1,0 +1,12 @@
+[Unit]
+Description=LED Scoreboard Driver
+DefaultDependencies=no
+
+[Service]
+Type=forking
+ExecStartPre=leuro-m20-bbb.hwinit start
+ExecStart=leuro-m20-bbb
+ExecStop=leuro-m20-bbb.hwinit stop
+
+[Install]
+WantedBy=sysinit.target
