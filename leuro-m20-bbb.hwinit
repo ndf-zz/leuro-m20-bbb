@@ -54,12 +54,7 @@ case "$1" in
 	chown caprica:caprica $SOCKPATH
 	;;
     stop)
-	if [ -e $DISPLAYSOCK ]
-	then 
-		dd if=/dev/zero bs=1440 count=1 of=$DISPLAY
-	fi
 	rm -fr /run/caprica
-	sleep 0.1
 	pkill leuro-m20-bbb
 	find_pwm
 	echo 0 > ${pwm}/enable

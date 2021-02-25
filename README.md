@@ -28,8 +28,16 @@ the path:
 	# useradd -r -s /usr/sbin/nologin caprica
 	# install -s -o root -g root -m 0700 leuro-m20-bbb /usr/bin
 	# install -o root -g root -m 0700 leuro-m20-bbb.hwinit /usr/bin
-	# install -o root -g root -m 0600 leuro-m20-bbb.service /etc/systemd/system
+	# install -o root -g root -m 0644 leuro-m20-bbb.service /etc/systemd/system
 	# systemctl enable leuro-m20-bbb.service
+
+## Test
+
+Install the socat utility and run the supplied script sendpage.sh:
+
+	# apt-get install socat
+	# ./tests/sendpage.sh ./tests/panels.bin
+	# ./tests/sendpage.sh ./tests/blank.bin
 
 ## Hardware Setup
 
