@@ -2,7 +2,7 @@
  * Write cairo FORMAT_A1 framebuffer to Leurocom M20
  * via Beaglebone Black mmap'ed GPIO with a cavalier approach
  *
- * Note: GPIO pins should be configured separately, see: pinsetup.sh
+ * Note: GPIO pins should be configured separately, see: start script
  */
 #include <stdio.h>
 #include <stdint.h>
@@ -65,294 +65,285 @@ static volatile uint32_t *gpio1_clr = NULL;
 
 /* Display addressing helper functions */
 
-void
-card_first (void)
+void card_first(void)
 {
-  /* Toggle E2 on/off */
-  (*gpio1_set) = (1 << PIN_E2);
-  (*gpio1_clr) = (1 << PIN_E2);
+	/* Toggle E2 on/off */
+	(*gpio1_set) = (1 << PIN_E2);
+	(*gpio1_clr) = (1 << PIN_E2);
 }
 
-void
-card_next (void)
+void card_next(void)
 {
-  /* Set E1 then toggle E2 on/off */
-  (*gpio1_set) = (1 << PIN_E1);
-  (*gpio1_set) = (1 << PIN_E2);
-  (*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
+	/* Set E1 then toggle E2 on/off */
+	(*gpio1_set) = (1 << PIN_E1);
+	(*gpio1_set) = (1 << PIN_E2);
+	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
 }
 
-void
-strobe_t (void)
+void strobe_t(void)
 {
-  /* Toggle T on/off - transfer one bit into display rows */
-  (*gpio0_set) = (1 << PIN_T);
-  (*gpio0_clr) = (1 << PIN_T);
+	/* Toggle T on/off - transfer one bit into display rows */
+	(*gpio0_set) = (1 << PIN_T);
+	(*gpio0_clr) = (1 << PIN_T);
 }
 
-void
-row_first (void)
+void row_first(void)
 {
-  /* Set E0 to put icard in latch mode, then clear data lines */
-  (*gpio0_set) = (1 << PIN_E0);
-  (*gpio0_clr) = DMASK;
+	/* Set E0 to put icard in latch mode, then clear data lines */
+	(*gpio0_set) = (1 << PIN_E0);
+	(*gpio0_clr) = DMASK;
 
-  /* latch data lines on icard */
-  strobe_t ();
+	/* latch data lines on icard */
+	strobe_t();
 
-  /* set D4 then release the latch mode by clearing E0 */
-  (*gpio0_set) = (1 << PIN_D4);
-  (*gpio0_clr) = (1 << PIN_E0);
+	/* set D4 then release the latch mode by clearing E0 */
+	(*gpio0_set) = (1 << PIN_D4);
+	(*gpio0_clr) = (1 << PIN_E0);
 }
 
-void
-row_next (void)
+void row_next(void)
 {
-  /* Set E0 to put icard in latch mode, then set data lines */
-  (*gpio0_set) = (1 << PIN_E0);
-  (*gpio0_clr) = (1 << PIN_D4) | (1 << PIN_D3);
-  (*gpio0_set) =
-    (1 << PIN_D8) | (1 << PIN_D7) | (1 << PIN_D6) | (1 << PIN_D5);
+	/* Set E0 to put icard in latch mode, then set data lines */
+	(*gpio0_set) = (1 << PIN_E0);
+	(*gpio0_clr) = (1 << PIN_D4) | (1 << PIN_D3);
+	(*gpio0_set) =
+	    (1 << PIN_D8) | (1 << PIN_D7) | (1 << PIN_D6) | (1 << PIN_D5);
 
-  /* latch data lines on icard */
-  strobe_t ();
+	/* latch data lines on icard */
+	strobe_t();
 
-  /* set D4 then release the latch mode by clearing E0 */
-  (*gpio0_set) = (1 << PIN_D4);
-  (*gpio0_clr) = (1 << PIN_E0);
+	/* set D4 then release the latch mode by clearing E0 */
+	(*gpio0_set) = (1 << PIN_D4);
+	(*gpio0_clr) = (1 << PIN_E0);
 }
 
-void
-strobe_s (void)
+void strobe_s(void)
 {
-  /* Toggle S on/off - latch LED registers across whole display */
-  (*gpio1_set) = (1 << PIN_S);
-  (*gpio1_clr) = (1 << PIN_S);
+	/* Toggle S on/off - latch LED registers across whole display */
+	(*gpio1_set) = (1 << PIN_S);
+	(*gpio1_clr) = (1 << PIN_S);
 }
 
 /* Transfer bitmap pixels into LED panel shift registers */
-void
-redraw (uint32_t * buf)
+void redraw(uint32_t * buf)
 {
-  uint32_t *oft = &buf[0];
-  uint32_t c = 0;
-  uint32_t p = 0;
-  uint32_t i = 0;
-  uint32_t pof = 0;
-  uint32_t nbof = 0;
-  uint32_t pxh = 0;
-  uint32_t nbbase = 0;
-  uint32_t nbshift = 0;
-  uint32_t nbline = 0;
-  uint32_t line = 0;
-  uint32_t b8 = 0;
-  uint32_t b7 = 0;
-  uint32_t b6 = 0;
-  uint32_t b5 = 0;
-  uint32_t b4 = 0;
-  uint32_t b3 = 0;
-  //uint32_t b2 = 0;
-  //uint32_t b1 = 0;
-  uint32_t tmp = 0;
+	uint32_t *oft = &buf[0];
+	uint32_t c = 0;
+	uint32_t p = 0;
+	uint32_t i = 0;
+	uint32_t pof = 0;
+	uint32_t nbof = 0;
+	uint32_t pxh = 0;
+	uint32_t nbbase = 0;
+	uint32_t nbshift = 0;
+	uint32_t nbline = 0;
+	uint32_t line = 0;
+	uint32_t b8 = 0;
+	uint32_t b7 = 0;
+	uint32_t b6 = 0;
+	uint32_t b5 = 0;
+	uint32_t b4 = 0;
+	uint32_t b3 = 0;
+	//uint32_t b2 = 0;
+	//uint32_t b1 = 0;
+	uint32_t tmp = 0;
 
-  card_first ();
-  while (c < Z)			// for each icard, bottom to top
-    {
-      oft = &buf[CARDOFT * (Z - c - 1)];
-      row_first ();
-      p = 0;
-      while (p < L)		// for each panel column, right to left
+	card_first();
+	while (c < Z)		// for each icard, bottom to top
 	{
-	  pof = L - p - 1;
-	  nbof = 0;
-	  while (nbof < SRNB)	// for each nibble column on panel
-	    {
-	      pxh = pof * PL + nbof * 4;
-	      nbbase = pxh / 32;
-	      nbshift = pxh % 32;
-	      line = 0;
-	      while (line < SRVP)
+		oft = &buf[CARDOFT * (Z - c - 1)];
+		row_first();
+		p = 0;
+		while (p < L)	// for each panel column, right to left
 		{
-		  nbline = nbbase + line * FBW;
-		  b8 = oft[nbline] >> nbshift;
-		  b7 = oft[nbline + REGOFT] >> nbshift;
-		  b6 = oft[nbline + 2 * REGOFT] >> nbshift;
-		  b5 = oft[nbline + 3 * REGOFT] >> nbshift;
-		  b4 = oft[nbline + 4 * REGOFT] >> nbshift;
-		  b3 = oft[nbline + 5 * REGOFT] >> nbshift;
-		  // b2 = oft[nbline + 7 * REGOFT] >> nbshift;
-		  // b1 = oft[nbline + 7 * REGOFT] >> nbshift;
-		  for (i = 0; i < 4; i++)
-		    {
-		      strobe_t ();
-		      tmp = (((b8 & 0x1) << PIN_D8)
-			     | ((b7 & 0x1) << PIN_D7)
-			     | ((b6 & 0x1) << PIN_D6)
-			     | ((b5 & 0x1) << PIN_D5)
-			     | ((b4 & 0x1) << PIN_D4)
-			     | ((b3 & 0x1) << PIN_D3));
-		      (*gpio0_set) = tmp;
-		      (*gpio0_clr) = ~tmp;
-		      b8 >>= 1;
-		      b7 >>= 1;
-		      b6 >>= 1;
-		      b5 >>= 1;
-		      b4 >>= 1;
-		      b3 >>= 1;
-		      // b2 >>= 1;
-		      // b1 >>= 1;
-		    }
-		  line++;
+			pof = L - p - 1;
+			nbof = 0;
+			while (nbof < SRNB)	// for each nibble column on panel
+			{
+				pxh = pof * PL + nbof * 4;
+				nbbase = pxh / 32;
+				nbshift = pxh % 32;
+				line = 0;
+				while (line < SRVP) {
+					nbline = nbbase + line * FBW;
+					b8 = oft[nbline] >> nbshift;
+					b7 = oft[nbline + REGOFT] >> nbshift;
+					b6 = oft[nbline +
+						 2 * REGOFT] >> nbshift;
+					b5 = oft[nbline +
+						 3 * REGOFT] >> nbshift;
+					b4 = oft[nbline +
+						 4 * REGOFT] >> nbshift;
+					b3 = oft[nbline +
+						 5 * REGOFT] >> nbshift;
+					// b2 = oft[nbline + 7 * REGOFT] >> nbshift;
+					// b1 = oft[nbline + 7 * REGOFT] >> nbshift;
+					for (i = 0; i < 4; i++) {
+						strobe_t();
+						tmp = (((b8 & 0x1) << PIN_D8)
+						       | ((b7 & 0x1) << PIN_D7)
+						       | ((b6 & 0x1) << PIN_D6)
+						       | ((b5 & 0x1) << PIN_D5)
+						       | ((b4 & 0x1) << PIN_D4)
+						       | ((b3 & 0x1) <<
+							  PIN_D3));
+						(*gpio0_set) = tmp;
+						(*gpio0_clr) = ~tmp;
+						b8 >>= 1;
+						b7 >>= 1;
+						b6 >>= 1;
+						b5 >>= 1;
+						b4 >>= 1;
+						b3 >>= 1;
+						// b2 >>= 1;
+						// b1 >>= 1;
+					}
+					line++;
+				}
+				nbof++;
+			}
+			p++;
+			row_next();
 		}
-	      nbof++;
-	    }
-	  p++;
-	  row_next ();
+		c++;
+		card_next();
 	}
-      c++;
-      card_next ();
-    }
-  strobe_s ();
+	strobe_s();
 }
 
 /* Print simple error and exit */
-void
-perror_exit (char *message)
+void perror_exit(char *message)
 {
-  perror (message);
-  exit (EXIT_FAILURE);
+	perror(message);
+	exit(EXIT_FAILURE);
 }
 
-int
-main (int argc, char **argv)
+int main(int argc, char **argv)
 {
-  int res = 0;
+	int res = 0;
 
-  /* map GPIO memory pages and assign registers */
-  int s = open ("/dev/mem", O_RDWR | O_SYNC);
-  if (s == -1)
-    perror_exit ("Error accessing /dev/mem");
-  uint32_t *gpio0 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
-				       MAP_SHARED, s, GPIO0_ADDR);
-  if (gpio0 == MAP_FAILED)
-    perror_exit ("Error mapping gpio0");
-  uint32_t *gpio1 = (uint32_t *) mmap (NULL, GPIOLEN, PROT_READ | PROT_WRITE,
-				       MAP_SHARED, s, GPIO1_ADDR);
-  if (gpio1 == MAP_FAILED)
-    perror_exit ("Error mapping gpio1");
-  if (close (s) == -1)
-    perror_exit ("Error closing /dev/mem");
+	/* map GPIO memory pages and assign registers */
+	int s = open("/dev/mem", O_RDWR | O_SYNC);
+	if (s == -1)
+		perror_exit("Error accessing /dev/mem");
+	uint32_t *gpio0 =
+	    (uint32_t *) mmap(NULL, GPIOLEN, PROT_READ | PROT_WRITE,
+			      MAP_SHARED, s, GPIO0_ADDR);
+	if (gpio0 == MAP_FAILED)
+		perror_exit("Error mapping gpio0");
+	uint32_t *gpio1 =
+	    (uint32_t *) mmap(NULL, GPIOLEN, PROT_READ | PROT_WRITE,
+			      MAP_SHARED, s, GPIO1_ADDR);
+	if (gpio1 == MAP_FAILED)
+		perror_exit("Error mapping gpio1");
+	if (close(s) == -1)
+		perror_exit("Error closing /dev/mem");
 
-  /* fetch uid and gid of unprivileged user */
-  struct passwd *pwd = getpwnam (DROPUSER);
-  if (pwd == NULL)
-    perror_exit ("Error fetching user and group ids");
+	/* fetch uid and gid of unprivileged user */
+	struct passwd *pwd = getpwnam(DROPUSER);
+	if (pwd == NULL)
+		perror_exit("Error fetching user and group ids");
 
-  /* drop all privs */
-  if (setgroups (0, NULL) == -1)
-    perror_exit ("Error dropping supplementary groups");
-  if (setgid (pwd->pw_gid) != 0)
-    perror_exit ("Unable to drop group privileges");
-  if (setuid (pwd->pw_uid) != 0)
-    perror_exit ("Unable to drop user privileges");
+	/* drop all privs */
+	if (setgroups(0, NULL) == -1)
+		perror_exit("Error dropping supplementary groups");
+	if (setgid(pwd->pw_gid) != 0)
+		perror_exit("Unable to drop group privileges");
+	if (setuid(pwd->pw_uid) != 0)
+		perror_exit("Unable to drop user privileges");
 
-  /* set umask */
-  umask (0007);
+	/* set umask */
+	umask(0007);
 
-  /* save pointers to the interesting registers */
-  gpio0_set = &gpio0[GPIO_SET];
-  gpio0_clr = &gpio0[GPIO_CLR];
-  gpio1_set = &gpio1[GPIO_SET];
-  gpio1_clr = &gpio1[GPIO_CLR];
+	/* save pointers to the interesting registers */
+	gpio0_set = &gpio0[GPIO_SET];
+	gpio0_clr = &gpio0[GPIO_CLR];
+	gpio1_set = &gpio1[GPIO_SET];
+	gpio1_clr = &gpio1[GPIO_CLR];
 
-  /* request memory for framebuffer and initialise */
-  size_t fblen = FBW * DH * sizeof (uint32_t);
-  uint32_t *fb = calloc (FBW * DH, sizeof (uint32_t));
-  if (fb == NULL)
-    perror_exit ("Error allocating framebuffer");
+	/* request memory for framebuffer and initialise */
+	size_t fblen = FBW * DH * sizeof(uint32_t);
+	uint32_t *fb = calloc(FBW * DH, sizeof(uint32_t));
+	if (fb == NULL)
+		perror_exit("Error allocating framebuffer");
 
-  /* Create unix datagram socket and set non-blocking */
-  s = socket (AF_UNIX, SOCK_DGRAM, 0);
-  if (s == -1)
-    perror_exit ("Error creating unix socket");
-  res = fcntl (s, F_GETFL);
-  if (res == -1)
-    perror_exit ("Error reading socket flags");
-  res = fcntl (s, F_SETFL, res | O_NONBLOCK);
-  if (res == -1)
-    perror ("Error setting socket non-blocking");
+	/* Create unix datagram socket and set non-blocking */
+	s = socket(AF_UNIX, SOCK_DGRAM, 0);
+	if (s == -1)
+		perror_exit("Error creating unix socket");
+	res = fcntl(s, F_GETFL);
+	if (res == -1)
+		perror_exit("Error reading socket flags");
+	res = fcntl(s, F_SETFL, res | O_NONBLOCK);
+	if (res == -1)
+		perror("Error setting socket non-blocking");
 
-  /* Clear the address and copy in socket pathname */
-  struct sockaddr_un name;
-  memset (&name, 0, sizeof (struct sockaddr_un));
-  name.sun_family = AF_UNIX;
-  strncpy (name.sun_path, FB_ADDR, sizeof (name.sun_path) - 1);
+	/* Clear the address and copy in socket pathname */
+	struct sockaddr_un name;
+	memset(&name, 0, sizeof(struct sockaddr_un));
+	name.sun_family = AF_UNIX;
+	strncpy(name.sun_path, FB_ADDR, sizeof(name.sun_path) - 1);
 
-  /* unlink pathname, ignoring errors - the error is deferred to bind */
-  unlink (FB_ADDR);
+	/* unlink pathname, ignoring errors - the error is deferred to bind */
+	unlink(FB_ADDR);
 
-  /* bind address to socket - with race condition on path create */
-  res =
-    bind (s, (const struct sockaddr *) &name, sizeof (struct sockaddr_un));
-  if (res == -1)
-    perror_exit ("Error binding socket address");
+	/* bind address to socket - with race condition on path create */
+	res =
+	    bind(s, (const struct sockaddr *)&name, sizeof(struct sockaddr_un));
+	if (res == -1)
+		perror_exit("Error binding socket address");
 
-  /* detach process and close all open fds */
-  res = daemon (0, 1);
-  if (res == -1)
-    perror_exit ("Error detaching process");
-  int maxfd = sysconf (_SC_OPEN_MAX);
-  if (maxfd == -1)
-    perror_exit ("Error reading _SC_OPEN_MAX");
-  int fd = 0;
-  while (fd < maxfd)
-    {
-      if (fd != s)
-	close (fd);		// in this particular case, ignore errors
-      fd++;
-    }
-
-  /* report startup to syslog */
-  syslog (LOG_USER | LOG_INFO,
-	  "Display: %dx%d px, %dx%d panels on %d icards, %d rows/card\n",
-	  DW, DH, HPANELS, VPANELS, Z, Q);
-  syslog (LOG_USER | LOG_INFO, "Listening on UNIX:%s\n", FB_ADDR);
-
-  /* prepare display interface card, and clear display */
-  (*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
-  redraw (&fb[0]);
-
-  /* wait for updates on socket */
-  struct pollfd pfd;
-  pfd.fd = s;
-  pfd.events = POLLIN;
-  for (;;)
-    {
-      res = poll (&pfd, 1, -1);
-      if (res == -1)
-	{
-	  syslog (LOG_USER | LOG_ERR, "Fatal error waiting on socket: %m");
-	  exit (EXIT_FAILURE);
+	/* detach process and close all open fds */
+	res = daemon(0, 1);
+	if (res == -1)
+		perror_exit("Error detaching process");
+	int maxfd = sysconf(_SC_OPEN_MAX);
+	if (maxfd == -1)
+		perror_exit("Error reading _SC_OPEN_MAX");
+	int fd = 0;
+	while (fd < maxfd) {
+		if (fd != s)
+			close(fd);	// in this particular case, ignore errors
+		fd++;
 	}
-      if (pfd.revents & POLLIN)
-	{
-	  res = 0;
-	  while (recvfrom (s, fb, fblen, 0, NULL, NULL) > 0)
-	    {
-	      res++;
-	      if (res > MAXFRAMEDROP)
-                {
-	          syslog (LOG_USER | LOG_NOTICE,
-                             "Dropped %d frames before update", res);
-		  break;
-                }
-	    }
-	  if (res > 0)
-	    {
-	      /* redraw frame buffer */
-	      redraw (&fb[0]);
-	    }
+
+	/* report startup to syslog */
+	syslog(LOG_USER | LOG_INFO,
+	       "Display: %dx%d px, %dx%d panels on %d icards, %d rows/card\n",
+	       DW, DH, HPANELS, VPANELS, Z, Q);
+	syslog(LOG_USER | LOG_INFO, "Listening on UNIX:%s\n", FB_ADDR);
+
+	/* prepare display interface card, and clear display */
+	(*gpio1_clr) = (1 << PIN_E1) | (1 << PIN_E2);
+	redraw(&fb[0]);
+
+	/* wait for updates on socket */
+	struct pollfd pfd;
+	pfd.fd = s;
+	pfd.events = POLLIN;
+	for (;;) {
+		res = poll(&pfd, 1, -1);
+		if (res == -1) {
+			syslog(LOG_USER | LOG_ERR,
+			       "Fatal error waiting on socket: %m");
+			exit(EXIT_FAILURE);
+		}
+		if (pfd.revents & POLLIN) {
+			res = 0;
+			while (recvfrom(s, fb, fblen, 0, NULL, NULL) > 0) {
+				res++;
+				if (res > MAXFRAMEDROP) {
+					syslog(LOG_USER | LOG_NOTICE,
+					       "Dropped %d frames before update",
+					       res);
+					break;
+				}
+			}
+			if (res > 0) {
+				/* redraw frame buffer */
+				redraw(&fb[0]);
+			}
+		}
 	}
-    }
-  return 0;
+	return 0;
 }
