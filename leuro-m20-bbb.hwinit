@@ -13,7 +13,7 @@ PWM=
 # Locate and define the appropriate PWMCHIP and PWM handles
 function find_pwm {
 	PWMCHIP=`ls /sys/devices/platform/ocp/48302000.epwmss/48302200.pwm/pwm/`
-	PWM=`echo -en /sys/class/pwm/${pwmchip}/pwm-?:0`
+	PWM=`echo -en /sys/class/pwm/${PWMCHIP}/pwm-?:0`
 	if [ ! -e "${PWM}" ]
 	then
   		echo 0 > /sys/class/pwm/${PWMCHIP}/export
@@ -24,6 +24,15 @@ function find_pwm {
 
 # Prepare all GPIO handles and set to output mode
 function gpio_start {
+	echo Pre-set PWM GPIO
+	if [ ! -e /sys/class/gpio/gpio50 ]
+	then
+		echo 50 > /sys/class/gpio/export
+	fi
+	echo out > /sys/class/gpio/gpio50/direction
+	echo 1 > /sys/class/gpio/gpio50/value
+	config-pin P9.14 gpio >/dev/null
+	
 	echo Configure Display GPIOs
 	for gpio in 14 15 30 31 5 4 13 12 3 2 48 60 51
 	do
@@ -57,6 +66,7 @@ case "$1" in
 	rm -fr $SOCKPATH
 	find_pwm
 	pkill -x leuro-m20-bbb
+	config-pin P9.14 gpio >/dev/null
 	echo 0 > ${PWM}/enable
 	echo timer > /sys/class/leds/beaglebone\:green\:usr0/trigger
 	;;
